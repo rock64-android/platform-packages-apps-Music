@@ -7,6 +7,7 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src) \
 	src/com/android/music/IMediaPlaybackService.aidl
 
 LOCAL_PACKAGE_NAME := Music
+LOCAL_PRIVILEGED_MODULE := true
 
 LOCAL_SDK_VERSION := current
 
