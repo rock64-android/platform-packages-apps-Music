@@ -59,7 +59,7 @@ import java.io.PrintWriter;
 import java.lang.ref.WeakReference;
 import java.util.Random;
 import java.util.Vector;
-
+import android.database.CursorIndexOutOfBoundsException;
 /**
  * Provides "background" audio playback capabilities, allowing the
  * user to switch between activities without stopping playback.
@@ -791,7 +791,7 @@ public class MediaPlaybackService extends Service {
      * or that the play-state changed (paused/resumed).
      */
     private void notifyChange(String what) {
-
+    try{
         Intent i = new Intent(what);
         i.putExtra("id", Long.valueOf(getAudioId()));
         i.putExtra("artist", getArtistName());
@@ -824,6 +824,9 @@ public class MediaPlaybackService extends Service {
         
         // Share this notification directly with our widgets
         mAppWidgetProvider.notifyChange(this, what);
+        }catch (CursorIndexOutOfBoundsException ex) {
+        // expected
+        }
     }
 
     private void ensurePlayListCapacity(int size) {
@@ -1188,6 +1191,7 @@ public class MediaPlaybackService extends Service {
     }
 
     private void updateNotification() {
+    try{
         RemoteViews views = new RemoteViews(getPackageName(), R.layout.statusbar);
         views.setImageViewResource(R.id.icon, R.drawable.stat_notify_musicplayer);
         if (getAudioId() < 0) {
@@ -1217,6 +1221,9 @@ public class MediaPlaybackService extends Service {
                 new Intent("com.android.music.PLAYBACK_VIEWER")
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), 0);
         startForeground(PLAYBACKSERVICE_STATUS, status);
+        }catch (CursorIndexOutOfBoundsException ex) {
+        // expected
+        }
     }
 
     private void stop(boolean remove_status_icon) {
@@ -1295,6 +1302,7 @@ public class MediaPlaybackService extends Service {
      */
 
     public void prev() {
+    try{
         synchronized (this) {
             if (mShuffleMode == SHUFFLE_NORMAL) {
                 // go to previously-played track and remove it from the history
@@ -1317,6 +1325,9 @@ public class MediaPlaybackService extends Service {
             openCurrentAndNext();
             play();
             notifyChange(META_CHANGED);
+        }
+        }catch (CursorIndexOutOfBoundsException ex) {
+        // expected
         }
     }
 
@@ -1406,6 +1417,7 @@ public class MediaPlaybackService extends Service {
     }
 
     public void gotoNext(boolean force) {
+    try{
         synchronized (this) {
             if (mPlayListLen <= 0) {
                 Log.d(LOGTAG, "No play queue");
@@ -1428,6 +1440,9 @@ public class MediaPlaybackService extends Service {
             openCurrentAndNext();
             play();
             notifyChange(META_CHANGED);
+            }
+        }catch (CursorIndexOutOfBoundsException ex) {
+        // expected
         }
     }
     
