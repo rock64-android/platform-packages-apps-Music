@@ -31,6 +31,7 @@ import android.content.BroadcastReceiver;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.database.Cursor;
+import android.database.CursorIndexOutOfBoundsException;
 import android.database.sqlite.SQLiteException;
 import android.graphics.Bitmap;
 import android.media.audiofx.AudioEffect;
@@ -623,6 +624,56 @@ public class MediaPlaybackService extends Service {
             mShuffleMode = shufmode;
         }
     }
+	
+    private void reloadPlayList(){
+        Cursor cursor = getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mCursorCols, null, null, null);
+        cursor.moveToFirst();
+        int count = cursor.getCount();
+    //    Log.v(LOGTAG, "MediaPlaybackService --> reloadPlayList() --> count = " + count);
+        if(count == 0 || count == mPlayListLen)
+            return;
+            
+        int indexId = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID);
+        int indexDATA = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA);
+        long [] newlist = new long[count];
+        int len = 0;
+        try{
+            while(!cursor.isAfterLast()){
+                while(cursor.getString(indexDATA).startsWith("/mnt/internal_sd/Records/")){
+                    if(!cursor.isAfterLast())
+                        cursor.moveToNext();
+                    }
+     //           Log.v(LOGTAG, "MediaPlaybackService --> reloadPlayList() --> " + cursor.getInt(indexId) + " --> " + cursor.getString(indexDATA));
+                newlist[len] = cursor.getInt(indexId);
+                len ++;
+                cursor.moveToNext();
+            }
+        }catch(CursorIndexOutOfBoundsException e){
+                e.printStackTrace();
+        }
+        
+        while(!cursor.isAfterLast()){
+            while(cursor.getString(indexDATA).startsWith("/mnt/internal_sd/Records/")){
+                if(!cursor.isAfterLast())
+                    cursor.moveToNext();
+                }
+         //   Log.v(LOGTAG, "MediaPlaybackService --> reloadPlayList() --> " + cursor.getInt(indexId) + " --> " + cursor.getString(indexDATA));
+            newlist[len] = cursor.getInt(indexId);
+            len ++;
+            cursor.moveToNext();
+        }
+     //   Log.v(LOGTAG, "MediaPlaybackService --> reloadPlayList() --> len = " + len);
+        if(len != count){
+            mPlayList = new long[len];
+            for(int i = 0; i < len; i++){
+                mPlayList[i] = newlist[i];
+            }
+            mPlayListLen= len;
+        }else{
+            mPlayList = newlist;
+            mPlayListLen= count;
+        }
+    }
     
     @Override
     public IBinder onBind(Intent intent) {
@@ -752,20 +803,27 @@ public class MediaPlaybackService extends Service {
                     if (action.equals(Intent.ACTION_MEDIA_EJECT)) {
                         saveQueue(true);
                         mQueueIsSaveable = false;
+                        mPlayPos = 0;
                         closeExternalStorageFiles(intent.getData().getPath());
                     } else if (action.equals(Intent.ACTION_MEDIA_MOUNTED)) {
                         mMediaMountedCount++;
                         mCardId = MusicUtils.getCardId(MediaPlaybackService.this);
+						/*
                         reloadQueue();
                         mQueueIsSaveable = true;
                         notifyChange(QUEUE_CHANGED);
                         notifyChange(META_CHANGED);
+						*/
+                    }else if(action.equals(Intent.ACTION_MEDIA_SCANNER_FINISHED)){
+                        Log.v(LOGTAG, "MediaPlaybackService --> ACTION_MEDIA_SCANNER_FINISHED");
+                        reloadPlayList();
                     }
                 }
             };
             IntentFilter iFilter = new IntentFilter();
             iFilter.addAction(Intent.ACTION_MEDIA_EJECT);
             iFilter.addAction(Intent.ACTION_MEDIA_MOUNTED);
+            iFilter.addAction(Intent.ACTION_MEDIA_SCANNER_FINISHED);
             iFilter.addDataScheme("file");
             registerReceiver(mUnmountReceiver, iFilter);
         }
